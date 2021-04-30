@@ -1,4 +1,10 @@
 # chat_protocol
-#para compilar el server y cliente se requiere la libreria -lpthread
-#para ejecutar se le pasa como argumento el PORT en el que funcionara
-#comandos disponibles: msg-user,msg-bc,login,list
+_primera version_
+##Compilar
+_para compilar el server y cliente se requiere la libreria -lpthread_
+
+##Ejecutar
+_para ejecutar se le pasa como argumento el PORT en el que funcionara_
+
+##comandos disponibles
+_msg-user,msg-bc,login,list_
