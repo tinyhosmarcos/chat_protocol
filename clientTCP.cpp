@@ -11,11 +11,13 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <fstream>
 #include <math.h>
 #include <thread>
 #include <mutex>
 #include <chrono>
 #include <atomic>
+#include <map>
 using namespace std;
 mutex mutexListUsers;
 pthread_mutex_t lock;
@@ -52,7 +54,48 @@ string messageParse(string inputBash){
 
 }
 
+string FileParser(string inputBash){
+    string messageFile;
+    inputBash=inputBash.substr(inputBash.find(" ")+1);
+    string user=inputBash.substr(0,inputBash.find(' '));
+    inputBash=inputBash.substr(inputBash.find(" ")+1);
+    string name_file=inputBash;
+    cout<<"user->"<<user<<" "<<"name_file->"<<name_file<<endl;
+
+    ifstream file{name_file};
+    string file_contents = static_cast<ostringstream&>(ostringstream{} << file.rdbuf()).str();
+    map<int,int> count_blocks;
+    int counter=0;
+    int indice=1;
+    for (string::iterator it=file_contents.begin(); it!=file_contents.end(); ++it){
+        if(counter++==98){
+            count_blocks[indice++]=99;
+            counter=0;
+        }
+    }
+    if(counter!=0) count_blocks[indice]=counter;
+    int parameter=2+count_blocks.end()->first;
+    messageFile.append(2-to_string(parameter).length(),'0');
+    messageFile.append(to_string(parameter));
+    parameter=user.length();
+    messageFile.append(2-to_string(parameter).length(),'0');
+    messageFile.append(to_string(parameter));
+    parameter=name_file.length();
+    messageFile.append(2-to_string(parameter).length(),'0');
+    messageFile.append(to_string(parameter));
+    for(map<int,int>::iterator it=count_blocks.begin();it!=count_blocks.end();++it){
+        parameter=it->second;
+        messageFile.append(2-to_string(parameter).length(),'0');
+        messageFile.append(to_string(parameter));
+    }
+    messageFile.append(user);
+    messageFile.append(name_file);
+    messageFile.append(file_contents);
+    return messageFile;
+}
 string inputParser(string inputBash){
+    if(inputBash=="exit")
+        return "x";
     string messageComplete;
     string inputCode=inputBash.substr(0,inputBash.find(' '));
     string inputMessage;
@@ -63,12 +106,14 @@ string inputParser(string inputBash){
         messageComplete.append("m");
     else if(inputCode=="msg-bc")
         messageComplete.append("b");
-    else if(inputCode=="uploadfile")
+    else if(inputCode=="uploadfile"){
         messageComplete.append("u");
+        messageComplete.append( FileParser(inputBash) );
+        return messageComplete;
+    }
+        //uploadfile tinyhos externo.txt
     else if(inputCode=="file_AN")
         messageComplete.append("f");
-    else if(inputCode=="exit")
-       messageComplete.append("x");
     else if(inputCode=="list")
         messageComplete.append("i");
     else
@@ -91,8 +136,6 @@ void thread_write(int n,int SocketFD,atomic<bool>& run,atomic<bool>& run_write){
         run_write.store(true);
         if(inputBash=="")
             continue;
-        if(inputBash=="exit")
-            break;
         message_client=inputParser(inputBash);
         message_client_size=message_client.length();
         n = write(SocketFD,message_client.c_str(),message_client_size);
@@ -104,13 +147,6 @@ void thread_write(int n,int SocketFD,atomic<bool>& run,atomic<bool>& run_write){
        
     }while(true);
 
-}
-void thread_read(int n,int SocketFD){
-    while(true){
-        string message_server(256,0);    
-        n = read(SocketFD, &message_server[0],255);
-        cout<<endl<<"Server say: "<<message_server<<endl<<"client@adasd:~$ ";
-    }
 }
 
 int main(int argc, char** argv){
@@ -159,6 +195,7 @@ int main(int argc, char** argv){
     while(true){
         string message_server(256,0);    
         n = read(SocketFD, &message_server[0],255);
+        if(message_server[0]=='X') break;
         if(n==1)continue;
         run.store(false);
 

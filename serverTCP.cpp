@@ -23,7 +23,12 @@ map<string,int> listUsers;
 mutex mutexListUsers;
 
 
-
+string findUser(int ConnectFD){
+    for(map<string,int>::iterator it=listUsers.begin();it!=listUsers.end();++it){
+        if(it->second==ConnectFD) return it->first;
+    }
+    return "";
+}
 map<int ,int> parametersParse(string inputbash){
     map<int,int> parameters;
     int numParameters; //numero de parametros del inputbash}
@@ -55,6 +60,10 @@ string messageParser(string inputbash,int connectFD){
     int n;
     string messageResponse;
     string inputCode=inputbash.substr(0,1);//codigo caracteres =1
+    if(inputCode=="x") {
+        listUsers.erase(findUser(connectFD));
+        return "X";
+    }
     inputbash=inputbash.substr(1);          //input bash sin el caracter de codigo 
     string copybash=inputbash;
     map<int,int> parameters=parametersParse(inputbash); //parametros parseados
@@ -74,7 +83,7 @@ string messageParser(string inputbash,int connectFD){
         }
     }
     if(inputCode=="m"){
-        user=listUsers.find(messageWords.find(1)->second)->first;
+        user=findUser(connectFD);
         if(listUsers[user]){
             messageResponse="M";
             //rellenar mensaje
@@ -92,7 +101,8 @@ string messageParser(string inputbash,int connectFD){
             messageResponse.append(user);
             for(int i=2;i<=messageWords.end()->first;i++){
                 messageResponse.append(messageWords[i]);
-            }    
+            }
+            user=listUsers.find(messageWords.find(1)->second)->first;    
             n=write(listUsers[user],messageResponse.c_str(),messageResponse.size());
             return "Mensaje de Usuario";
         }
@@ -124,7 +134,28 @@ string messageParser(string inputbash,int connectFD){
         messageResponse.append(user);
         return messageResponse;
     }
-
+    if(inputCode=="u"){
+        user=findUser(connectFD);
+        messageResponse="U";
+         //rellenar mensaje
+        messageResponse.append(2-(to_string(parameters.end()->first)).length(),'0');
+        messageResponse.append(to_string(parameters.end()->first));
+        //cambiar user
+        int user_length=user.length();
+        messageResponse.append(2-(to_string(user_length)).length(),'0');
+        messageResponse.append(to_string(user_length)); 
+        for(int i=2;i<=parameters.end()->first;i++){
+            messageResponse.append(2-(to_string(parameters[i]).length()),'0');
+            messageResponse.append(to_string(parameters[i]));
+        }
+        messageResponse.append(user);
+        for(int i=2;i<=messageWords.end()->first;i++){
+            messageResponse.append(messageWords[i]);
+        }
+        user=listUsers.find(messageWords.find(1)->second)->first;    
+        n=write(listUsers[user],messageResponse.c_str(),messageResponse.size());
+        return "File Send";
+    }
     return "Fallo";
 
 }
@@ -140,13 +171,13 @@ void threadConnection(int ConnectFD){
     do{
         bzero(&message_client[0],256 );
         n = read(ConnectFD, &message_client[0],256);
+ 
         cout<<"Message Client: "<<message_client<<endl;
         message_server=messageParser(message_client,ConnectFD);
         message_server_size=message_server.length();
         cout<<"Status Acction: "<<message_server<<endl;
-
-
         n = write(ConnectFD,message_server.c_str(),message_server_size);
+        if(message_server=="X") exitCondition=false;
     }while(exitCondition);
     shutdown(ConnectFD, SHUT_RDWR);
         /*perform read write operations ...*/ 
