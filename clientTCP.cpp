@@ -21,6 +21,79 @@
 using namespace std;
 mutex mutexListUsers;
 pthread_mutex_t lock;
+
+map<int ,int> parametersParse(string inputbash){
+    map<int,int> parameters;
+    int numParameters; //numero de parametros del inputbash}
+    stringstream geek(inputbash.substr(0,2));
+    geek>>numParameters;
+    inputbash=inputbash.substr(2);  
+    //inputbash=inputbash.substr(numParameters*2);              //corta el numero de parametros ya
+    //llenar map con el numero de parametros de numParameters
+    for(int i=0;i<numParameters;i++){
+        stringstream geek(inputbash.substr(i*2,2));
+        geek>>parameters[i+1];
+    }
+    return parameters;
+
+}
+
+map<int,string> wordsParse(map<int,int> &parameters, string inputbash){
+    map<int,string> words;
+    for(int i=1;i<=parameters.end()->first;i++){
+        words[i]=inputbash.substr(0,parameters[i]);
+        inputbash=inputbash.substr(parameters[i]);  //corta el inputbash hasta la palabras que aun faltan
+    } 
+    return words;
+
+}
+
+string messageParserServer(string message_server){
+    string inputCode=message_server.substr(0,1);//codigo caracteres =1
+    if(inputCode=="0") return message_server.substr(1);
+    message_server=message_server.substr(1);          //input bash sin el caracter de codigo 
+    string copybash=message_server;
+    map<int,int> parameters=parametersParse(message_server); //parametros parseados
+    
+    message_server=message_server.substr(2); 
+    message_server=message_server.substr((parameters.end()->first)*2); //elimina el header solo deja las palabras
+    
+    map<int,string> messageWords=wordsParse(parameters,message_server);
+
+    string messageResponse;
+
+    if(inputCode=="L"){
+        messageResponse="Login: ";
+        messageResponse.append(messageWords[1]);
+    }
+    if(inputCode=="I"){
+        messageResponse="Lista de Usuarios\n";
+        for(int i=1;i<=messageWords.end()->first;i++){
+            messageResponse.append("-"+messageWords[i]+"\n");
+        }
+    }
+    if(inputCode=="M"){
+        messageResponse=messageWords[1];
+        messageResponse.append(" te envio un mensaje:");
+        for(int i=2;i<=messageWords.end()->first;i++){
+            messageResponse.append(" "+messageWords[i]);
+        }
+    }
+    if(inputCode=="B"){
+         messageResponse=messageWords[1];
+        messageResponse.append(" envio un mensaje broadcast:");
+        for(int i=2;i<=messageWords.end()->first;i++){
+            messageResponse.append(" "+messageWords[i]);
+        }
+    }
+
+    return messageResponse;
+
+
+}
+
+
+
 string messageParse(string inputBash){
     if(inputBash.find(" ")>inputBash.size()){
         return "";
@@ -153,7 +226,7 @@ int main(int argc, char** argv){
     int port;
     stringstream geek(argv[1]);
     geek>>port;
- 
+   
     struct sockaddr_in stSockAddr;
     int Res;
     int SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -168,7 +241,7 @@ int main(int argc, char** argv){
 
     stSockAddr.sin_family = AF_INET;
     stSockAddr.sin_port = htons(port);
-    Res = inet_pton(AF_INET, "127.0.0.1", &stSockAddr.sin_addr);
+    Res = inet_pton(AF_INET,"127.0.0.1", &stSockAddr.sin_addr);
 
     if (0 > Res){
         perror("error: first parameter is not a valid address family");
@@ -195,7 +268,11 @@ int main(int argc, char** argv){
     while(true){
         string message_server(256,0);    
         n = read(SocketFD, &message_server[0],255);
-        if(message_server[0]=='X') break;
+        if(message_server[0]=='X') {
+            cout<<"Cerrando Sesion"<<endl;
+            break;
+        }
+        message_server=messageParserServer(message_server);
         if(n==1)continue;
         run.store(false);
 
@@ -205,8 +282,8 @@ int main(int argc, char** argv){
 
         }
         else{
-        cout<<"-----server saya----------"<<endl;
-        cout<<message_server<<endl;
+            cout<<"-----server say----------"<<endl;
+            cout<<message_server<<endl;
         }
         
         run.store(true);

@@ -20,6 +20,7 @@ using namespace std;
 
 //global variables
 map<string,int> listUsers;
+map<int,int> UserAttemps;
 mutex mutexListUsers;
 
 
@@ -77,6 +78,7 @@ string messageParser(string inputbash,int connectFD){
             if(messageWords[2]==PASSWORDSERVER){
                 lock_guard<mutex> guard(mutexListUsers);
                 listUsers[messageWords[1]]=connectFD;
+                UserAttemps[connectFD]==0;
                 messageResponse="L0102OK";
                 return messageResponse;
             }          
@@ -104,7 +106,7 @@ string messageParser(string inputbash,int connectFD){
             }
             user=listUsers.find(messageWords.find(1)->second)->first;    
             n=write(listUsers[user],messageResponse.c_str(),messageResponse.size());
-            return "Mensaje de Usuario";
+            return "0Mensaje Enviado al usuario";
         }
     }
     if(inputCode=="b"){
@@ -117,7 +119,7 @@ string messageParser(string inputbash,int connectFD){
             if(it->second==connectFD) continue;
             n=write(it->second,messageResponse.c_str(),messageResponse.length());
         }
-        return "Mensaje de Broadcast";
+        return "0Mensaje de Broadcast enviado";
 
     }
     if(inputCode=="i"){
@@ -154,8 +156,14 @@ string messageParser(string inputbash,int connectFD){
         }
         user=listUsers.find(messageWords.find(1)->second)->first;    
         n=write(listUsers[user],messageResponse.c_str(),messageResponse.size());
-        return "File Send";
+        return "0File Send";
     }
+
+    lock_guard<mutex> guard(mutexListUsers);
+    if(UserAttemps[connectFD]++>5){
+        return "X";
+    }
+
     return "Fallo";
 
 }
@@ -173,7 +181,7 @@ void threadConnection(int ConnectFD){
         n = read(ConnectFD, &message_client[0],256);
  
         cout<<"Message Client: "<<message_client<<endl;
-        message_server=messageParser(message_client,ConnectFD);
+        message_server=messageParser(message_client,ConnectFD); 
         message_server_size=message_server.length();
         cout<<"Status Acction: "<<message_server<<endl;
         n = write(ConnectFD,message_server.c_str(),message_server_size);
