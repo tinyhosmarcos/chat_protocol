@@ -18,10 +18,14 @@
 #include <chrono>
 #include <atomic>
 #include <map>
+#include <utility>
 using namespace std;
 mutex mutexListUsers;
 pthread_mutex_t lock;
 
+string servers[]={"127.0.0.1","35.202.151.229"};
+
+pair<string,string> file_parameters;
 map<int ,int> parametersParse(string inputbash){
     map<int,int> parameters;
     int numParameters; //numero de parametros del inputbash}
@@ -90,13 +94,21 @@ string messageParserServer(string message_server){
         messageResponse=messageWords[1]; //nombre de usuario
         messageResponse.append(" te envio un archivo:");
         messageResponse.append(messageWords[2]+"\n");
+        messageResponse.append("Para recharzarlo escribe el comando('file_AN')");
         string messageFile;
         for(int i=3;i<=messageWords.end()->first;i++){
             messageFile.append(messageWords[i]);
         }
-        ofstream outFile("ServerReceived__FILE___"+messageWords[2]);
+        file_parameters=make_pair(messageWords[1],"ServerReceived__FILE___"+messageWords[2]);
+        ofstream outFile(file_parameters.second);
         outFile<<messageFile;
         outFile.close();
+    }
+    if(inputCode=="F"){
+        messageResponse=messageWords[1];
+        messageResponse.append(" rechazo tu fichero(file_AN");
+
+        return copybash;
     }
     return messageResponse;
 
@@ -144,7 +156,6 @@ string FileParser(string inputBash){
     string user=inputBash.substr(0,inputBash.find(' '));
     inputBash=inputBash.substr(inputBash.find(" ")+1);
     string name_file=inputBash;
-    cout<<"user->"<<user<<" "<<"name_file->"<<name_file<<endl;
 
     ifstream file(name_file,ios::binary);
     string file_contents = static_cast<ostringstream&>(ostringstream{} << file.rdbuf()).str();
@@ -196,8 +207,20 @@ string inputParser(string inputBash){
         return messageComplete;
     }
         //uploadfile tinyhos externo.txt
-    else if(inputCode=="file_AN")
+    else if(inputCode=="file_AN"){
         messageComplete.append("f");
+        messageComplete.append("01");
+        
+        int user_length=file_parameters.first.length();
+        messageComplete.append(2-(to_string(user_length)).length(),'0');
+        messageComplete.append(to_string(user_length));
+        messageComplete.append(file_parameters.first);
+        if(remove(file_parameters.second.c_str())!=0)
+            perror("error deleting file");
+        else 
+            puts("Fichero rechazado");
+        return messageComplete;
+    }
     else if(inputCode=="list")
         messageComplete.append("i");
     else
@@ -234,10 +257,11 @@ void thread_write(int n,int SocketFD,atomic<bool>& run,atomic<bool>& run_write){
 }
 
 int main(int argc, char** argv){
-    int port;
+    int port,ip_server;
     stringstream geek(argv[1]);
     geek>>port;
-   
+    stringstream geek1(argv[2]);
+    geek1>>ip_server;
     struct sockaddr_in stSockAddr;
     int Res;
     int SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -252,7 +276,7 @@ int main(int argc, char** argv){
 
     stSockAddr.sin_family = AF_INET;
     stSockAddr.sin_port = htons(port);
-    Res = inet_pton(AF_INET,"127.0.0.1", &stSockAddr.sin_addr);
+    Res = inet_pton(AF_INET,servers[ip_server].c_str(), &stSockAddr.sin_addr);
 
     if (0 > Res){
         perror("error: first parameter is not a valid address family");

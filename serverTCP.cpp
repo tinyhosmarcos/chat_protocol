@@ -169,13 +169,25 @@ string messageParser(string inputbash,int connectFD){
         n=write(listUsers[user],messageResponse.c_str(),messageResponse.size());
         return "0File Send";
     }
+    if(inputCode=="f"){
+        user=findUser(connectFD);
+        messageResponse="F";
+        messageResponse.append("01");
 
+        int user_length=user.length();
+        messageResponse.append(2-(to_string(user_length)).length(),'0');
+        messageResponse.append(to_string(user_length)); 
+        messageResponse.append(user);
+        n=write(listUsers[messageWords[1]],messageResponse.c_str(),messageResponse.size());
+        return "0file_AN enviado";
+
+    }
     lock_guard<mutex> guard(mutexListUsers);
     if(UserAttemps[connectFD]++>5){
         return "X";
     }
 
-    return "Fallo";
+    return "0Fallo";
 
 }
 
@@ -209,6 +221,7 @@ int main(int argc, char** argv){
     int port;
     stringstream geek(argv[1]);
     geek>>port;
+   
     struct sockaddr_in stSockAddr;
     int SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     char buffer[256];
