@@ -86,7 +86,18 @@ string messageParserServer(string message_server){
             messageResponse.append(" "+messageWords[i]);
         }
     }
-
+    if(inputCode=="U"){
+        messageResponse=messageWords[1]; //nombre de usuario
+        messageResponse.append(" te envio un archivo:");
+        messageResponse.append(messageWords[2]+"\n");
+        string messageFile;
+        for(int i=3;i<=messageWords.end()->first;i++){
+            messageFile.append(messageWords[i]);
+        }
+        ofstream outFile("ServerReceived__FILE___"+messageWords[2]);
+        outFile<<messageFile;
+        outFile.close();
+    }
     return messageResponse;
 
 
@@ -135,7 +146,7 @@ string FileParser(string inputBash){
     string name_file=inputBash;
     cout<<"user->"<<user<<" "<<"name_file->"<<name_file<<endl;
 
-    ifstream file{name_file};
+    ifstream file(name_file,ios::binary);
     string file_contents = static_cast<ostringstream&>(ostringstream{} << file.rdbuf()).str();
     map<int,int> count_blocks;
     int counter=0;
@@ -199,7 +210,7 @@ string inputParser(string inputBash){
 void thread_write(int n,int SocketFD,atomic<bool>& run,atomic<bool>& run_write){
     string message_client="";
     size_t message_client_size;
-    string message_server(256,0);
+    string message_server(2000,0);
     string inputBash;
     do{
         inputBash="";
@@ -266,8 +277,8 @@ int main(int argc, char** argv){
 
     thread (thread_write,n,SocketFD,ref(run),ref(run_write)).detach();
     while(true){
-        string message_server(256,0);    
-        n = read(SocketFD, &message_server[0],255);
+        string message_server(2000,0);    
+        n = read(SocketFD, &message_server[0],2000);
         if(message_server[0]=='X') {
             cout<<"Cerrando Sesion"<<endl;
             break;

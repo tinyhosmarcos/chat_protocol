@@ -112,14 +112,25 @@ string messageParser(string inputbash,int connectFD){
     if(inputCode=="b"){
         messageResponse="B";
         //rellenar mensaje
-       
-        messageResponse.append(copybash);
+        user=findUser(connectFD);
+        messageResponse.append(2-to_string((parameters.end()->first)+1).length(),'0');
+        messageResponse.append(to_string((parameters.end()->first)+1));
+        messageResponse.append(2-to_string(user.length()).length(),'0');
+        messageResponse.append(to_string(user.length()));
+        for(int i=1;i<=parameters.end()->first;i++){
+            messageResponse.append(2-to_string(parameters[i]).length(),'0');
+            messageResponse.append(to_string(parameters[i])); 
+        }
+        messageResponse.append(user);
+        for(int i=1;i<=messageWords.end()->first;i++){
+            messageResponse.append(messageWords[i]);
+        }
 
         for(map<string,int>::iterator it=listUsers.begin();it!=listUsers.end();++it){
             if(it->second==connectFD) continue;
             n=write(it->second,messageResponse.c_str(),messageResponse.length());
         }
-        return "0Mensaje de Broadcast enviado";
+        return messageResponse;
 
     }
     if(inputCode=="i"){
@@ -174,11 +185,11 @@ void threadConnection(int ConnectFD){
     
     string message_server="I got your message";
     size_t message_server_size=message_server.length();
-    string message_client(256,0);
+    string message_client(2000,0);
     bool exitCondition=true;
     do{
-        bzero(&message_client[0],256 );
-        n = read(ConnectFD, &message_client[0],256);
+        bzero(&message_client[0],2000 );
+        n = read(ConnectFD, &message_client[0],2000);
  
         cout<<"Message Client: "<<message_client<<endl;
         message_server=messageParser(message_client,ConnectFD); 
